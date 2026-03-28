@@ -1,0 +1,348 @@
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,Helvetica,sans-serif;background:#f7f8fb;color:#1f2937}
+.app{min-height:100vh;display:flex;flex-direction:column;background:#f7f8fb}
+.hdr{display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid #e5e7eb;background:#ffffff;flex-shrink:0}
+.brand{display:flex;align-items:center;gap:8px}
+.bmark{color:#ef4444;font-size:18px}
+.bname{font-weight:700;font-size:16px}
+.bsub{font-size:10px;color:#6b7280;letter-spacing:.07em;text-transform:uppercase;margin-left:2px}
+.live{display:flex;align-items:center;gap:5px;font-size:11px;color:#6b7280;margin-left:auto}
+.dot{width:6px;height:6px;border-radius:50%;background:#22c55e;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.main{display:grid;grid-template-columns:340px 1fr;flex:1;min-height:0}
+.lookup{border-right:1px solid #e5e7eb;background:#f9fafb;padding:22px 18px;display:flex;flex-direction:column;gap:16px}
+.lookup-card{background:#ffffff;border:1px solid #e5e7eb;border-radius:18px;padding:18px}
+.lookup-hero{text-align:left}
+.lookup-icon{font-size:28px;margin-bottom:8px}
+.lookup-title{font-size:20px;font-weight:700;margin-bottom:6px}
+.lookup-sub{font-size:12.5px;color:#4b5563;line-height:1.6}
+.rform{display:flex;flex-direction:column;gap:10px;margin-top:14px}
+.rlabel{font-size:10px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:.07em}
+.rinput{width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:12px;font-size:13px;font-family:Consolas,Monaco,monospace;background:#ffffff;color:#111827;outline:none}
+.rinput:focus{border-color:#ef4444;box-shadow:0 0 0 2px rgba(239,68,68,.08)}
+.rbtn{padding:10px 14px;border-radius:12px;border:1px solid #d1d5db;background:#ffffff;cursor:pointer;font-size:12.5px;font-weight:700;color:#111827}
+.rbtn:hover{background:#f9fafb}
+.rerr{padding:10px 12px;background:#fef2f2;border-radius:12px;color:#b91c1c;font-size:12.5px;border:1px solid #fecaca;display:none}
+.rok{padding:10px 12px;background:#f0fdf4;border-radius:12px;color:#166534;font-size:12.5px;font-weight:700;border:1px solid #bbf7d0;display:none}
+.quick{display:flex;flex-direction:column;gap:8px}
+.quick button{padding:9px 11px;border-radius:12px;border:1px solid #e5e7eb;background:#ffffff;cursor:pointer;text-align:left;font-size:12px}
+.quick button:hover{border-color:#cbd5e1}
+.quick code{font-family:Consolas,Monaco,monospace;font-size:11px}
+.side-note{font-size:11.5px;color:#4b5563;line-height:1.6}
+.content{display:flex;flex-direction:column;min-width:0}
+.content-top{padding:18px;border-bottom:1px solid #e5e7eb;background:#ffffff;display:none}
+.patient-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.patient-name{font-size:24px;font-weight:700;line-height:1.2}
+.patient-meta{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+.chip{font-size:11px;background:#ffffff;border:1px solid #d1d5db;color:#4b5563;padding:3px 9px;border-radius:999px}
+.room-pill{font-size:11px;font-weight:700;background:#eff6ff;color:#1d4ed8;padding:4px 10px;border-radius:10px;font-family:Consolas,Monaco,monospace}
+.sections{display:grid;grid-template-columns:1fr 1fr;gap:0;flex:1;min-height:0;display:none}
+.col{padding:18px;border-right:1px solid #e5e7eb;overflow-y:auto}
+.col:last-child{border-right:none}
+.panel{margin-bottom:18px}
+.panel-title{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#6b7280;margin-bottom:10px}
+.box{background:#ffffff;border:1px solid #e5e7eb;border-radius:16px;padding:14px}
+.field{margin-bottom:12px}
+.field:last-child{margin-bottom:0}
+.fl{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:4px;font-weight:700}
+.fv{font-size:13px;line-height:1.6}
+.flist{list-style:none}
+.flist li{font-size:13px;line-height:1.6;padding-left:12px;position:relative}
+.flist li::before{content:"–";position:absolute;left:0;color:#6b7280}
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:8px;color:#6b7280;padding:40px;text-align:center}
+.empty-ico{font-size:30px}
+@media(max-width:860px){.main{grid-template-columns:1fr}.lookup{border-right:none;border-bottom:1px solid #e5e7eb}.sections{grid-template-columns:1fr}.col{border-right:none;border-bottom:1px solid #e5e7eb}.col:last-child{border-bottom:none}}
+</style>
+
+<div class="app">
+  <div class="hdr">
+    <div class="brand">
+      <span class="bmark">♥</span>
+      <span class="bname">Heart Tag</span>
+      <span class="bsub">Patient Lookup</span>
+    </div>
+    <div class="live"><span class="dot"></span><span>Live</span></div>
+  </div>
+
+  <div class="main">
+    <div class="lookup">
+      <div class="lookup-card">
+        <div class="lookup-hero">
+          <div class="lookup-icon">♥</div>
+          <div class="lookup-title">RFID Search</div>
+          <div class="lookup-sub">Enter the RFID first. The dashboard will load the conversation summary, previous doctor notes, and patient information for that patient.</div>
+        </div>
+
+        <div class="rform">
+          <label class="rlabel" for="rfidInput">RFID Input</label>
+          <input id="rfidInput" class="rinput" placeholder="Enter RFID, e.g. DR-SMITH" />
+          <button id="loadBtn" class="rbtn" type="button">Load Patient Record</button>
+        </div>
+      </div>
+
+      <div id="errorBox" class="rerr"></div>
+      <div id="okBox" class="rok"></div>
+
+      <div class="lookup-card">
+        <div class="panel-title">Quick Test RFIDs</div>
+        <div class="quick" id="quickList"></div>
+      </div>
+
+      <div class="lookup-card side-note">
+        I removed the simulate visit flow and made the UI centered around RFID lookup only. Previous doctor notes and patient info are mock data right now, so wire these fields to your backend when your real records are ready.
+      </div>
+    </div>
+
+    <div class="content">
+      <div id="emptyState" class="empty">
+        <div class="empty-ico">♡</div>
+        <div style="font-weight:700;font-size:16px">Enter an RFID to load a patient</div>
+        <div style="font-size:12.5px;max-width:340px;line-height:1.6">The lookup will show the conversation summary, previous doctor notes, and patient information.</div>
+      </div>
+
+      <div id="contentTop" class="content-top">
+        <div class="patient-head">
+          <div>
+            <div id="patientName" class="patient-name"></div>
+            <div class="patient-meta">
+              <span id="chipRfid" class="chip"></span>
+              <span id="chipDoctor" class="chip"></span>
+              <span id="chipMrn" class="chip"></span>
+              <span id="chipDob" class="chip"></span>
+            </div>
+          </div>
+          <div id="roomPill" class="room-pill"></div>
+        </div>
+      </div>
+
+      <div id="sections" class="sections">
+        <div class="col">
+          <div class="panel">
+            <div class="panel-title">Conversation Summary</div>
+            <div class="box" id="summaryBox"></div>
+          </div>
+        </div>
+
+        <div class="col">
+          <div class="panel">
+            <div class="panel-title">Previous Doctor Notes</div>
+            <div class="box" id="notesBox"></div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-title">Patient Information</div>
+            <div class="box" id="patientInfoBox"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const PATIENTS = [
+  {
+    id: 'PT-1001',
+    rfid: 'DR-SMITH',
+    doctor: 'Dr. Smith',
+    room_id: 'ROOM-1',
+    patient: {
+      name: 'Sarah Chen',
+      age: 42,
+      sex: 'Female',
+      dob: '1983-07-18',
+      mrn: 'MRN-48219',
+      allergies: ['None reported'],
+      medications: ['Ibuprofen as needed'],
+      history: 'History of pleuritis 2 years ago'
+    },
+    conversation_summary: {
+      chief_complaint: 'Sharp left-sided chest pain worsening with inhalation since this morning',
+      visit_type: 'Urgent Care',
+      onset: 'This morning (~5 hours ago)',
+      severity: 'Moderate',
+      symptoms: ['Sharp chest pain (left-sided)', 'Shortness of breath', 'Pain worsens with deep breathing'],
+      patient_questions: ['Could this be my heart?', 'Can I get an EKG?'],
+      requested_treatment: 'EKG / cardiac evaluation',
+      key_notes: 'Patient is worried about a cardiac cause. Prior pleuritis may be relevant, but cardiac causes should be ruled out first.'
+    },
+    previous_doctor_notes: [
+      'Prior urgent care visit documented pleuritic chest pain with improvement on anti-inflammatory treatment.',
+      'No prior cardiac history listed in the chart.',
+      'Recommend reviewing previous imaging and discharge paperwork if available.'
+    ]
+  },
+  {
+    id: 'PT-1002',
+    rfid: 'DR-JONES',
+    doctor: 'Dr. Jones',
+    room_id: 'ROOM-2',
+    patient: {
+      name: 'Michael Torres',
+      age: 55,
+      sex: 'Male',
+      dob: '1970-10-03',
+      mrn: 'MRN-59201',
+      allergies: ['No known drug allergies'],
+      medications: ['Lisinopril'],
+      history: 'Known hypertension'
+    },
+    conversation_summary: {
+      chief_complaint: 'Annual physical with elevated home BP readings and recent insomnia',
+      visit_type: 'Routine Checkup',
+      onset: 'Insomnia for about 1 month; recent elevated BP readings at home',
+      severity: 'Mild',
+      symptoms: ['Early morning waking', 'Blood pressure around 148/92 at home'],
+      patient_questions: ['Am I up to date on vaccines?'],
+      requested_treatment: 'Vaccine review and blood pressure follow-up',
+      key_notes: 'Patient feels mostly well but home readings suggest blood pressure may need closer review.'
+    },
+    previous_doctor_notes: [
+      'Last primary care follow-up noted controlled blood pressure on lisinopril.',
+      'Counseled on home BP monitoring and reducing sodium intake.',
+      'Vaccines were reviewed last year but records should be rechecked.'
+    ]
+  },
+  {
+    id: 'PT-1003',
+    rfid: 'A1B2C3D4',
+    doctor: 'Dr. Patel',
+    room_id: 'ROOM-3',
+    patient: {
+      name: 'Emily Carter',
+      age: 29,
+      sex: 'Female',
+      dob: '1996-04-11',
+      mrn: 'MRN-77340',
+      allergies: ['None reported'],
+      medications: ['Acetaminophen', 'Ibuprofen'],
+      history: 'Family history of migraines'
+    },
+    conversation_summary: {
+      chief_complaint: 'Recurring right-sided throbbing headaches with light sensitivity and nausea',
+      visit_type: 'Specialist Consult',
+      onset: '2 months, around 3 to 4 times per week',
+      severity: 'Severe',
+      symptoms: ['Right-sided throbbing headache', 'Photophobia', 'Nausea'],
+      patient_questions: ['Is this migraine?', 'Is there a prescription medication that works better?'],
+      requested_treatment: 'Migraine medication evaluation',
+      key_notes: 'Pattern is consistent with migraine and OTC medications have not helped much.'
+    },
+    previous_doctor_notes: [
+      'Previous note mentioned headache diary was recommended.',
+      'No neurologic deficits documented at last visit.',
+      'Consider discussing abortive therapy and possible preventive treatment.'
+    ]
+  }
+];
+
+const rfidInput = document.getElementById('rfidInput');
+const loadBtn = document.getElementById('loadBtn');
+const quickList = document.getElementById('quickList');
+const errorBox = document.getElementById('errorBox');
+const okBox = document.getElementById('okBox');
+const emptyState = document.getElementById('emptyState');
+const contentTop = document.getElementById('contentTop');
+const sections = document.getElementById('sections');
+
+function showError(message) {
+  errorBox.textContent = message;
+  errorBox.style.display = 'block';
+  okBox.style.display = 'none';
+}
+
+function showSuccess(message) {
+  okBox.textContent = message;
+  okBox.style.display = 'block';
+  errorBox.style.display = 'none';
+}
+
+function clearMessages() {
+  errorBox.style.display = 'none';
+  okBox.style.display = 'none';
+}
+
+function createField(label, value, isList) {
+  if (!value || (Array.isArray(value) && value.length === 0)) return '';
+  if (isList) {
+    const items = value.map(function(item) { return '<li>' + item + '</li>'; }).join('');
+    return '<div class="field"><div class="fl">' + label + '</div><ul class="flist">' + items + '</ul></div>';
+  }
+  return '<div class="field"><div class="fl">' + label + '</div><div class="fv">' + value + '</div></div>';
+}
+
+function renderRecord(record) {
+  const p = record.patient;
+  const s = record.conversation_summary;
+
+  document.getElementById('patientName').textContent = p.name;
+  document.getElementById('chipRfid').textContent = 'RFID: ' + record.rfid;
+  document.getElementById('chipDoctor').textContent = 'Doctor: ' + record.doctor;
+  document.getElementById('chipMrn').textContent = 'MRN: ' + p.mrn;
+  document.getElementById('chipDob').textContent = 'DOB: ' + p.dob;
+  document.getElementById('roomPill').textContent = record.room_id;
+
+  document.getElementById('summaryBox').innerHTML =
+    createField('Chief Complaint', s.chief_complaint, false) +
+    createField('Visit Type', s.visit_type, false) +
+    createField('Onset', s.onset, false) +
+    createField('Severity', s.severity, false) +
+    createField('Symptoms', s.symptoms, true) +
+    createField('Patient Questions', s.patient_questions, true) +
+    createField('Requested Treatment', s.requested_treatment, false) +
+    createField('Key Notes', s.key_notes, false);
+
+  document.getElementById('notesBox').innerHTML =
+    createField('Chart Notes', record.previous_doctor_notes, true);
+
+  document.getElementById('patientInfoBox').innerHTML =
+    createField('Age', String(p.age), false) +
+    createField('Sex', p.sex, false) +
+    createField('Medical History', p.history, false) +
+    createField('Current Medications', p.medications, true) +
+    createField('Allergies', p.allergies, true);
+
+  emptyState.style.display = 'none';
+  contentTop.style.display = 'block';
+  sections.style.display = 'grid';
+}
+
+function lookup(value) {
+  const key = (value || rfidInput.value || '').trim().toUpperCase();
+  clearMessages();
+  if (!key) {
+    showError('Enter an RFID first.');
+    return;
+  }
+
+  const found = PATIENTS.find(function(p) { return p.rfid.toUpperCase() === key; });
+  if (!found) {
+    showError('RFID "' + key + '" was not found.');
+    return;
+  }
+
+  rfidInput.value = key;
+  renderRecord(found);
+  showSuccess('Patient record loaded for ' + found.patient.name);
+}
+
+function renderQuickButtons() {
+  quickList.innerHTML = PATIENTS.map(function(p) {
+    return '<button type="button" data-rfid="' + p.rfid + '"><strong>' + p.patient.name + '</strong><br><code>' + p.rfid + '</code></button>';
+  }).join('');
+
+  Array.prototype.forEach.call(quickList.querySelectorAll('button'), function(button) {
+    button.addEventListener('click', function() {
+      lookup(button.getAttribute('data-rfid'));
+    });
+  });
+}
+
+loadBtn.addEventListener('click', function() { lookup(); });
+rfidInput.addEventListener('keydown', function(event) {
+  if (event.key === 'Enter') lookup();
+});
+
+renderQuickButtons();
+</script>

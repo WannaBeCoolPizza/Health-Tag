@@ -28,7 +28,7 @@ from pymongo import MongoClient
  
  
 # ---------- SETTINGS ----------
-GEMINI_API_KEY = "YOUR_API_KEY_HERE"
+GEMINI_API_KEY = "AIzaSyC49mQtHi8bwhV1HhgBun6nncvCvpn7VY8"
 GEMINI_MODEL = "gemini-2.0-flash"
 WHISPER_MODEL = "base"
  

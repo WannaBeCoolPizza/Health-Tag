@@ -1,0 +1,6 @@
+openai-whisper
+google-genai
+pyttsx3
+torch
+pyserial
+watchdog

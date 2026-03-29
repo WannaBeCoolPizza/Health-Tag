@@ -10,7 +10,7 @@ import { buildPatientDocument } from "../utils/patientTransform.js";
 const router = Router();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const txtOutputDir = path.resolve(__dirname, "../../../RFID Code/patients");
+const txtOutputDir = path.resolve(__dirname, "../../../PatientFiles");
 
 function isMongoConnected() {
   return Patient.db.readyState === 1;
@@ -27,7 +27,6 @@ function parseCsvInput(value) {
 function buildPatientTxtContent(body) {
   const lines = [
     `id:${String(body.id || "").trim()}`,
-    `rfid:${String(body.rfid || body.id || "").trim().toUpperCase()}`,
     `name:${String(body.name || "").trim()}`,
     `dob:${String(body.dob || "").trim()}`,
     `visit:${String(body.visit || "").trim()}`,
@@ -138,10 +137,34 @@ router.post("/txt", async (req, res) => {
   const body = req.body || {};
   const patientId = String(body.id || "").trim();
   const patientName = String(body.name || "").trim();
-  const rfid = String(body.rfid || "").trim().toUpperCase();
+  const rfid = String(body.rfid || patientId || "").trim().toUpperCase();
+
+  const requiredFields = [
+    "id",
+    "name",
+    "dob",
+    "visit",
+    "severity",
+    "gender",
+    "height",
+    "weight",
+    "bp",
+    "conditions",
+    "medications",
+    "family"
+  ];
+
+  const missingFields = requiredFields.filter((field) => !String(body[field] || "").trim());
+  if (missingFields.length > 0) {
+    res.status(400).json({
+      ok: false,
+      message: `Missing required fields: ${missingFields.join(", ")}.`
+    });
+    return;
+  }
 
   if (!patientId || !patientName || !rfid) {
-    res.status(400).json({ ok: false, message: "Patient id, name, and RFID are required." });
+    res.status(400).json({ ok: false, message: "Patient id and name are required." });
     return;
   }
 

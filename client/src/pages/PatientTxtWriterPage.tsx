@@ -22,7 +22,6 @@ const emptyAllergy = (): WriterAllergy => ({
 
 const defaultForm: PatientTxtPayload = {
   id: "",
-  rfid: "",
   name: "",
   dob: "",
   visit: todayYyyymmdd(),
@@ -70,8 +69,30 @@ export default function PatientTxtWriterPage() {
     event.preventDefault();
     setMessage({ type: "", text: "" });
 
-    if (!form.id.trim() || !form.name.trim() || !form.rfid.trim()) {
-      setMessage({ type: "error", text: "Patient ID, RFID, and Name are required." });
+    const requiredFields: Array<[keyof PatientTxtPayload, string]> = [
+      ["id", "ID"],
+      ["name", "Name"],
+      ["dob", "DOB"],
+      ["visit", "Visit"],
+      ["severity", "Severity"],
+      ["gender", "Gender"],
+      ["height", "Height"],
+      ["weight", "Weight"],
+      ["bp", "BP"],
+      ["conditions", "Conditions"],
+      ["medications", "Medications"],
+      ["family", "Family"]
+    ];
+
+    const missing = requiredFields
+      .filter(([field]) => !String(form[field] || "").trim())
+      .map(([, label]) => label);
+
+    if (missing.length > 0) {
+      setMessage({
+        type: "error",
+        text: `Fill required fields: ${missing.join(", ")}.`
+      });
       return;
     }
 
@@ -80,7 +101,7 @@ export default function PatientTxtWriterPage() {
       setResultText(result.content);
       setMessage({
         type: "success",
-        text: `Saved ${result.fileName} in RFID Code/patients.`
+        text: `Saved ${result.fileName} in PatientFiles.`
       });
     } catch (error) {
       const text = error instanceof Error ? error.message : "Failed to write txt file.";
@@ -93,7 +114,7 @@ export default function PatientTxtWriterPage() {
       <section className="writer-card">
         <h1 className="writer-title">Patient TXT Writer</h1>
         <p className="writer-subtitle">
-          Create an ESP32-friendly patient text file (same format as your RFID workflow).
+          Answer the patient intake questions below to create a txt file and Mongo record.
         </p>
 
         <form className="writer-form" onSubmit={submitForm}>
@@ -101,14 +122,6 @@ export default function PatientTxtWriterPage() {
             <label>
               ID
               <input value={form.id} onChange={(e) => updateField("id", e.target.value)} placeholder="1042" />
-            </label>
-            <label>
-              RFID
-              <input
-                value={form.rfid}
-                onChange={(e) => updateField("rfid", e.target.value.toUpperCase())}
-                placeholder="A1B2C3D4"
-              />
             </label>
             <label>
               Name

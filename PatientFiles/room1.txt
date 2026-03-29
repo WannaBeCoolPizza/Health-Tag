@@ -1,0 +1,17 @@
+id:1042
+name:Jane Doe
+dob:19900315
+visit:20260328
+severity:3
+gender:F
+height:165.0
+weight:68.5
+bp:120.5
+conditions:Asthma, Hypertension
+medications:Albuterol, Lisinopril
+family:Diabetes (father)
+allergy:Penicillin,4
+symptom:Hives
+symptom:Swelling
+allergy:Peanuts,5
+symptom:Anaphylaxis

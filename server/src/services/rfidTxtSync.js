@@ -8,7 +8,8 @@ import { buildPatientDocument, parseRfidTxtContent } from "../utils/patientTrans
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const baseRfidDir = path.resolve(__dirname, "../../../RFID Code");
-const txtSourceDirs = [baseRfidDir, path.join(baseRfidDir, "patients")];
+const patientFilesDir = path.resolve(__dirname, "../../../PatientFiles");
+const txtSourceDirs = [baseRfidDir, path.join(baseRfidDir, "patients"), patientFilesDir];
 
 async function collectTxtFiles() {
   const fileSet = new Set();

@@ -1,0 +1,12 @@
+id:1234
+name:Neerav
+dob:20000101
+visit:20260329
+severity:1
+gender:M
+height:165
+weight:68
+bp:120
+conditions:nothing
+medications:nothing
+family:nothing

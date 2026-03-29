@@ -10,7 +10,7 @@ import { buildPatientDocument } from "../utils/patientTransform.js";
 const router = Router();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const txtOutputDir = path.resolve(__dirname, "../../../PatientFiles");
+const txtOutputDir = path.resolve(__dirname, "../../../RFID Code/patients");
 
 function isMongoConnected() {
   return Patient.db.readyState === 1;

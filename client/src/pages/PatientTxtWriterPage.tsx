@@ -101,7 +101,7 @@ export default function PatientTxtWriterPage() {
       setResultText(result.content);
       setMessage({
         type: "success",
-        text: `Saved ${result.fileName} in PatientFiles.`
+        text: `Saved ${result.fileName} in RFID Code/patients.`
       });
     } catch (error) {
       const text = error instanceof Error ? error.message : "Failed to write txt file.";

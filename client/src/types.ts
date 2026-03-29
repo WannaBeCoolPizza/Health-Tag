@@ -44,6 +44,7 @@ export interface WriterAllergy {
 
 export interface PatientTxtPayload {
   id: string;
+  rfid: string;
   name: string;
   dob: string;
   visit: string;

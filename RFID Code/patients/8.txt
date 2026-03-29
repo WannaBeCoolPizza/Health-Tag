@@ -1,0 +1,12 @@
+id:8
+name:Iris Zhang
+dob:20000101
+visit:20260329
+severity:1
+gender:F
+height:155
+weight:68
+bp:10
+conditions:Nothing
+medications:Nothing
+family:Nothing

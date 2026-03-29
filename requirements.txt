@@ -6,3 +6,4 @@ pyserial
 watchdog
 sounddevice
 scipy
+requests

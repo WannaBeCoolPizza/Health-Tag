@@ -7,6 +7,6 @@ gender:M
 height:165
 weight:68
 bp:120
-conditions:Dead, evil
-medications:penis
+conditions:Evil
+medications:ADvil
 family:None

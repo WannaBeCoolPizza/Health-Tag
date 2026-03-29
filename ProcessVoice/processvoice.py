@@ -15,6 +15,10 @@ Write mode (program RFID cards):
 Patient files: RFID Code/patients/
 """
 
+import os
+from dotenv import load_dotenv
+load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
+
 import whisper
 from google import genai
 import pyttsx3
@@ -27,13 +31,14 @@ import glob
 import threading
 import tempfile
 import time
-import os
 import sys
 import re
 
 
 # ---------- SETTINGS ----------
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "AIzaSyC49mQtHi8bwhV1HhgBun6nncvCvpn7VY8")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+if not GEMINI_API_KEY:
+    raise RuntimeError("GEMINI_API_KEY environment variable not set")
 GEMINI_MODEL   = "gemini-2.0-flash"
 WHISPER_MODEL  = "base"
 SAMPLE_RATE    = 16000

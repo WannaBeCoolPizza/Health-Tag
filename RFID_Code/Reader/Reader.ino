@@ -13,15 +13,14 @@
 #include <Arduino.h>
 #include <SPI.h>
 #include <MFRC522.h>
+#include <driver/i2s.h>
 
 // ─── Pins ─────────────────────────────────────────────────────────────────────
 #define RST_PIN     21
 #define SS_PIN       5
 #define BUZZER_PIN  15
 #define BUTTON_PIN  33   // INPUT_PULLUP, active LOW
-
-MFRC522          mfrc522(SS_PIN, RST_PIN);
-MFRC522::MIFARE_Key rfidKey;
+#define LAUNCH_PIN  32   // INPUT_PULLUP, active LOW → launches processvoice
 
 // ─── Patient structs ──────────────────────────────────────────────────────────
 struct Allergy {
@@ -48,6 +47,90 @@ struct Patient {
     uint8_t  allergyCount;
     Allergy  allergies[5];
 };
+
+// ─── I2S (MAX98357A) ──────────────────────────────────────────────────────────
+#define I2S_BCLK    26
+#define I2S_LRC     25
+#define I2S_DOUT    22
+#define AUDIO_SAMPLE_RATE 16000
+
+MFRC522          mfrc522(SS_PIN, RST_PIN);
+MFRC522::MIFARE_Key rfidKey;
+
+// ─── I2S init ─────────────────────────────────────────────────────────────────
+void initI2S() {
+    i2s_config_t cfg = {
+        .mode                 = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_TX),
+        .sample_rate          = AUDIO_SAMPLE_RATE,
+        .bits_per_sample      = I2S_BITS_PER_SAMPLE_16BIT,
+        .channel_format       = I2S_CHANNEL_FMT_ONLY_LEFT,
+        .communication_format = I2S_COMM_FORMAT_STAND_I2S,
+        .intr_alloc_flags     = ESP_INTR_FLAG_LEVEL1,
+        .dma_buf_count        = 8,
+        .dma_buf_len          = 512,
+        .use_apll             = false,
+        .tx_desc_auto_clear   = true,
+    };
+    i2s_pin_config_t pins = {
+        .bck_io_num   = I2S_BCLK,
+        .ws_io_num    = I2S_LRC,
+        .data_out_num = I2S_DOUT,
+        .data_in_num  = I2S_PIN_NO_CHANGE,
+    };
+    i2s_driver_install(I2S_NUM_0, &cfg, 0, NULL);
+    i2s_set_pin(I2S_NUM_0, &pins);
+}
+
+// ─── Audio receive & play ─────────────────────────────────────────────────────
+void playAudioFromSerial(uint32_t numBytes) {
+    Serial.printf("[AUDIO] Playing %u bytes\n", numBytes);
+    uint8_t buf[512];
+    uint32_t received = 0;
+
+    while (received < numBytes) {
+        uint32_t toRead = min((uint32_t)sizeof(buf), numBytes - received);
+        uint32_t got = 0;
+        uint32_t deadline = millis() + 3000;
+
+        while (got < toRead && millis() < deadline) {
+            int avail = Serial.available();
+            if (avail > 0) {
+                int r = Serial.readBytes(buf + got, min((int)(toRead - got), avail));
+                got += r;
+            }
+        }
+        if (got == 0) break;  // timeout
+
+        size_t written;
+        i2s_write(I2S_NUM_0, buf, got, &written, portMAX_DELAY);
+        received += got;
+    }
+
+    // Flush I2S with silence so last samples play out
+    uint8_t silence[512] = {};
+    size_t written;
+    i2s_write(I2S_NUM_0, silence, sizeof(silence), &written, portMAX_DELAY);
+
+    Serial.println("AUDIO_DONE");
+}
+
+// ─── Incoming serial command handler ─────────────────────────────────────────
+void checkSerialCommands() {
+    if (!Serial.available()) return;
+
+    char cmdBuf[96];
+    int len = Serial.readBytesUntil('\n', cmdBuf, sizeof(cmdBuf) - 1);
+    if (len > 0 && cmdBuf[len - 1] == '\r') len--;
+    cmdBuf[len] = '\0';
+
+    if (strcmp(cmdBuf, "AUDIO_START") == 0) {
+        uint8_t lenBytes[4];
+        Serial.readBytes(lenBytes, 4);
+        uint32_t numBytes = ((uint32_t)lenBytes[0] << 24) | ((uint32_t)lenBytes[1] << 16)
+                          | ((uint32_t)lenBytes[2] <<  8) |  (uint32_t)lenBytes[3];
+        playAudioFromSerial(numBytes);
+    }
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 uint8_t xorChecksum(const uint8_t* data, size_t len) {
@@ -231,18 +314,22 @@ void readTagAndDecode() {
 
 // ─── Setup / Loop ─────────────────────────────────────────────────────────────
 void setup() {
-    Serial.begin(115200);
+    Serial.begin(460800);
     SPI.begin();
     mfrc522.PCD_Init();
     for (byte i = 0; i < 6; i++) rfidKey.keyByte[i] = 0xFF;
     pinMode(BUZZER_PIN, OUTPUT);
     pinMode(BUTTON_PIN, INPUT_PULLUP);
+    pinMode(LAUNCH_PIN, INPUT_PULLUP);
+    initI2S();
 
     Serial.println("=== RFID Patient Reader ===");
     Serial.println("Scanning for cards continuously | Hold button to ask a question");
 }
 
 void loop() {
+    checkSerialCommands();
+
     // Continuously scan for RFID cards
     if (mfrc522.PICC_IsNewCardPresent()) {
         if (mfrc522.PICC_ReadCardSerial()) {
@@ -261,5 +348,14 @@ void loop() {
         Serial.println("RECORD_START");
         while (digitalRead(BUTTON_PIN) == LOW) delay(10);
         Serial.println("RECORD_STOP");
+    }
+
+    // Launch button → tell PC to start processvoice.py
+    if (digitalRead(LAUNCH_PIN) == LOW) {
+        delay(20);  // debounce
+        if (digitalRead(LAUNCH_PIN) != LOW) return;
+
+        Serial.println("LAUNCH_APP");
+        while (digitalRead(LAUNCH_PIN) == LOW) delay(10);  // wait for release
     }
 }

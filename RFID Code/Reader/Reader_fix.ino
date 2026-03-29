@@ -1,15 +1,29 @@
+/**
+ * Reader.ino
+ *
+ * - Press 'r' in Serial Monitor to read an RFID patient card
+ * - Hold the button (GPIO 33) to signal the laptop to record and ask a question
+ *
+ * Wiring:
+ *   MFRC522  RST → GPIO 21   SS → GPIO 5    SPI defaults (18/19/23)
+ *   Buzzer → GPIO 15
+ *   Button → GPIO 33 (other leg to GND)
+ */
+
 #include <Arduino.h>
 #include <SPI.h>
 #include <MFRC522.h>
 
-// ─── Pins (adjust to your wiring) ────────────────────────────────────────────
-#define RST_PIN  21
-#define SS_PIN   5
+// ─── Pins ─────────────────────────────────────────────────────────────────────
+#define RST_PIN     21
+#define SS_PIN       5
+#define BUZZER_PIN  15
+#define BUTTON_PIN  33   // INPUT_PULLUP, active LOW
 
 MFRC522          mfrc522(SS_PIN, RST_PIN);
 MFRC522::MIFARE_Key rfidKey;
 
-// ─── Structs ──────────────────────────────────────────────────────────────────
+// ─── Patient structs ──────────────────────────────────────────────────────────
 struct Allergy {
     char    name[17];
     uint8_t severity;
@@ -68,7 +82,7 @@ bool readBlock(uint8_t blockNum, uint8_t* out16) {
     return true;
 }
 
-// ─── Decode binary buffer → Patient ──────────────────────────────────────────
+// ─── Decode ───────────────────────────────────────────────────────────────────
 bool decodePacket(const uint8_t* buf, uint32_t len, Patient& p) {
     if (buf[0] != 0xA5 || buf[1] != 0x5A) {
         Serial.println("[DECODE] Bad magic bytes");
@@ -83,12 +97,11 @@ bool decodePacket(const uint8_t* buf, uint32_t len, Patient& p) {
     }
 
     uint32_t o = 2;
-
     p.patientId       = ((uint16_t)buf[o] << 8) | buf[o+1];             o += 2;
     p.dateOfBirth     = ((uint32_t)buf[o]<<24)|((uint32_t)buf[o+1]<<16)
-                       |((uint32_t)buf[o+2]<<8)|(uint32_t)buf[o+3];     o += 4;
+                      |((uint32_t)buf[o+2]<<8)|(uint32_t)buf[o+3];     o += 4;
     p.dateOfVisit     = ((uint32_t)buf[o]<<24)|((uint32_t)buf[o+1]<<16)
-                       |((uint32_t)buf[o+2]<<8)|(uint32_t)buf[o+3];     o += 4;
+                      |((uint32_t)buf[o+2]<<8)|(uint32_t)buf[o+3];     o += 4;
     p.gender          = (char)buf[o++];
     p.height          = ((buf[o] << 8) | buf[o+1]) / 10.0f;             o += 2;
     p.weight          = ((buf[o] << 8) | buf[o+1]) / 10.0f;             o += 2;
@@ -148,34 +161,19 @@ void printPatient(const Patient& p) {
         }
     }
     Serial.println("════════════════════════════════════\n");
+    tone(BUZZER_PIN, 1000, 150);
 }
 
-// ─── Main read routine ────────────────────────────────────────────────────────
+// ─── RFID read ────────────────────────────────────────────────────────────────
 #define MAX_PACKET 700
 uint8_t rawBuf[MAX_PACKET];
 
 void readTagAndDecode() {
-    Serial.println("[READ] Place tag on reader...");
-
-    // Wait up to 15s for a tag
-    uint32_t deadline = millis() + 15000;
-    while (millis() < deadline) {
-        if (mfrc522.PICC_IsNewCardPresent() && mfrc522.PICC_ReadCardSerial())
-            break;
-        delay(100);
-    }
-    if (!mfrc522.uid.size) {
-        Serial.println("[READ] No tag detected — try again");
-        return;
-    }
-
-    // Print UID
     Serial.print("[READ] Tag UID: ");
     for (byte i = 0; i < mfrc522.uid.size; i++)
         Serial.printf("%02X ", mfrc522.uid.uidByte[i]);
     Serial.println();
 
-    // Read block 4 — contains 4-byte length header + first 12 bytes of data
     uint8_t block4[16];
     if (!readBlock(4, block4)) {
         mfrc522.PICC_HaltA();
@@ -195,13 +193,11 @@ void readTagAndDecode() {
 
     Serial.printf("[READ] Packet length: %d bytes\n", dataLen);
 
-    // Copy first usable chunk from block 4 (bytes 4-15)
     uint32_t firstChunk = min((uint32_t)12, dataLen);
     memcpy(rawBuf, block4 + 4, firstChunk);
     uint32_t collected = firstChunk;
     uint8_t  blockNum  = 5;
 
-    // Read remaining blocks
     while (collected < dataLen) {
         if (isSectorTrailer(blockNum)) { blockNum++; continue; }
 
@@ -221,12 +217,16 @@ void readTagAndDecode() {
     mfrc522.PCD_StopCrypto1();
     Serial.printf("[READ] Read complete — %d bytes\n", collected);
 
-    // Decode and print
     Patient p;
-    if (decodePacket(rawBuf, dataLen, p))
+    if (decodePacket(rawBuf, dataLen, p)) {
         printPatient(p);
-    else
+        Serial.printf("PATIENT_ID:%d\n", p.patientId);
+    } else {
         Serial.println("[READ] Decode failed");
+    }
+
+    // Reset the reader so it can detect the next card cleanly
+    mfrc522.PCD_Init();
 }
 
 // ─── Setup / Loop ─────────────────────────────────────────────────────────────
@@ -235,15 +235,31 @@ void setup() {
     SPI.begin();
     mfrc522.PCD_Init();
     for (byte i = 0; i < 6; i++) rfidKey.keyByte[i] = 0xFF;
+    pinMode(BUZZER_PIN, OUTPUT);
+    pinMode(BUTTON_PIN, INPUT_PULLUP);
 
     Serial.println("=== RFID Patient Reader ===");
-    Serial.println("Press 'r' in Serial Monitor to read a tag");
+    Serial.println("Scanning for cards continuously | Hold button to ask a question");
 }
 
 void loop() {
-    if (Serial.available()) {
-        char c = Serial.read();
-        if (c == 'r' || c == 'R')
+    // Continuously scan for RFID cards
+    if (mfrc522.PICC_IsNewCardPresent()) {
+        if (mfrc522.PICC_ReadCardSerial()) {
             readTagAndDecode();
+            delay(2000);  // prevent double-reads from the same card
+        }
+    } else {
+        delay(50);  // short pause between polls to keep the antenna stable
+    }
+
+    // Button held → tell Python to start recording from laptop mic
+    if (digitalRead(BUTTON_PIN) == LOW) {
+        delay(20);  // debounce
+        if (digitalRead(BUTTON_PIN) != LOW) return;
+
+        Serial.println("RECORD_START");
+        while (digitalRead(BUTTON_PIN) == LOW) delay(10);
+        Serial.println("RECORD_STOP");
     }
 }

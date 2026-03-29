@@ -37,7 +37,7 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "AIzaSyC49mQtHi8bwhV1HhgBun6nn
 GEMINI_MODEL   = "gemini-2.0-flash"
 WHISPER_MODEL  = "base"
 SAMPLE_RATE    = 16000
-BAUD_RATE      = 115200
+BAUD_RATE      = 460800
 
 PATIENT_FILES_FOLDER = os.path.join(os.path.dirname(__file__), "..", "RFID Code", "patients")
 
@@ -299,12 +299,60 @@ def ask_gemini(what_you_said: str, patient_file: str) -> str:
 
 # ---------- SPEAK ----------
 
-def speak(text: str):
+def speak(text: str, ser=None):
+    """Generate TTS and stream PCM audio to ESP32 I2S speaker over serial."""
     mouth = pyttsx3.init()
     mouth.setProperty('rate', 165)
     mouth.setProperty('volume', 0.9)
-    mouth.say(text)
+
+    if ser is None:
+        mouth.say(text)
+        mouth.runAndWait()
+        return
+
+    tts_wav = os.path.join(tempfile.gettempdir(), "tts_speak.wav")
+    mouth.save_to_file(text, tts_wav)
     mouth.runAndWait()
+
+    if not os.path.exists(tts_wav):
+        print("TTS save failed — no audio sent.\n")
+        return
+
+    rate, data = wav.read(tts_wav)
+
+    # Convert to mono
+    if data.ndim > 1:
+        data = data.mean(axis=1)
+
+    # Normalise to int16
+    if data.dtype != np.int16:
+        peak = np.iinfo(data.dtype).max if np.issubdtype(data.dtype, np.integer) else 1.0
+        data = (data.astype(np.float32) / peak * 32767).astype(np.int16)
+
+    # Resample to 16 kHz if needed
+    if rate != 16000:
+        from scipy.signal import resample_poly
+        from math import gcd
+        g = gcd(int(rate), 16000)
+        data = resample_poly(data, 16000 // g, int(rate) // g).astype(np.int16)
+
+    raw_pcm = data.tobytes()
+    print(f"Streaming {len(raw_pcm)} bytes to ESP32 speaker...")
+    ser.write(b"AUDIO_START\n")
+    ser.write(struct.pack('>I', len(raw_pcm)))
+    CHUNK = 1024
+    for i in range(0, len(raw_pcm), CHUNK):
+        ser.write(raw_pcm[i:i + CHUNK])
+
+    deadline = time.time() + 60
+    while time.time() < deadline:
+        if ser.in_waiting:
+            resp = ser.readline().decode('utf-8', errors='replace').strip()
+            if resp == "AUDIO_DONE":
+                print("Playback complete.\n")
+                break
+            elif resp:
+                print(f"ESP32: {resp}")
 
 
 # ---------- MAIN ----------
@@ -334,6 +382,7 @@ if __name__ == "__main__":
         with serial.Serial(port, BAUD_RATE, timeout=1) as ser:
             print("Connected. Hold the button to ask a question | Scan a card for a briefing.\n")
 
+
             while True:
                 line = ser.readline().decode('utf-8', errors='replace').strip()
                 if not line:
@@ -359,7 +408,7 @@ if __name__ == "__main__":
                     print("Asking Gemini...")
                     briefing = ask_gemini(what_you_said, patient_file)
                     print(f'Gemini says: "{briefing}"\n')
-                    speak(briefing)
+                    speak(briefing, ser)
 
                 # ── RFID card scanned: speak patient summary ───────────────
                 elif line.startswith("PATIENT_ID:"):
@@ -372,4 +421,4 @@ if __name__ == "__main__":
                     print(f"Card scanned — patient {patient_id}. Asking Gemini for briefing...")
                     briefing = ask_gemini("Give me a quick briefing on this patient.", patient_file)
                     print(f'Gemini says: "{briefing}"\n')
-                    speak(briefing)
+                    speak(briefing, ser)

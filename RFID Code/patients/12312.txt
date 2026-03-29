@@ -1,0 +1,13 @@
+id:12312
+rfid:123123
+name:123
+dob:23123
+visit:20260328
+severity:3
+gender:
+height:213
+weight:123
+bp:123
+conditions:123
+medications:
+family:123

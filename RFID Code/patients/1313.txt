@@ -1,0 +1,13 @@
+id:1313
+rfid:WDWD
+name:Whale
+dob:19920706
+visit:20260328
+severity:3
+gender:M
+height:123
+weight:123
+bp:123
+conditions:Ligma
+medications:Bed
+family:Cancer

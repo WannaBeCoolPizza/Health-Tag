@@ -300,59 +300,11 @@ def ask_gemini(what_you_said: str, patient_file: str) -> str:
 # ---------- SPEAK ----------
 
 def speak(text: str, ser=None):
-    """Generate TTS and stream PCM audio to ESP32 I2S speaker over serial."""
     mouth = pyttsx3.init()
     mouth.setProperty('rate', 165)
     mouth.setProperty('volume', 0.9)
-
-    if ser is None:
-        mouth.say(text)
-        mouth.runAndWait()
-        return
-
-    tts_wav = os.path.join(tempfile.gettempdir(), "tts_speak.wav")
-    mouth.save_to_file(text, tts_wav)
+    mouth.say(text)
     mouth.runAndWait()
-
-    if not os.path.exists(tts_wav):
-        print("TTS save failed — no audio sent.\n")
-        return
-
-    rate, data = wav.read(tts_wav)
-
-    # Convert to mono
-    if data.ndim > 1:
-        data = data.mean(axis=1)
-
-    # Normalise to int16
-    if data.dtype != np.int16:
-        peak = np.iinfo(data.dtype).max if np.issubdtype(data.dtype, np.integer) else 1.0
-        data = (data.astype(np.float32) / peak * 32767).astype(np.int16)
-
-    # Resample to 16 kHz if needed
-    if rate != 16000:
-        from scipy.signal import resample_poly
-        from math import gcd
-        g = gcd(int(rate), 16000)
-        data = resample_poly(data, 16000 // g, int(rate) // g).astype(np.int16)
-
-    raw_pcm = data.tobytes()
-    print(f"Streaming {len(raw_pcm)} bytes to ESP32 speaker...")
-    ser.write(b"AUDIO_START\n")
-    ser.write(struct.pack('>I', len(raw_pcm)))
-    CHUNK = 1024
-    for i in range(0, len(raw_pcm), CHUNK):
-        ser.write(raw_pcm[i:i + CHUNK])
-
-    deadline = time.time() + 60
-    while time.time() < deadline:
-        if ser.in_waiting:
-            resp = ser.readline().decode('utf-8', errors='replace').strip()
-            if resp == "AUDIO_DONE":
-                print("Playback complete.\n")
-                break
-            elif resp:
-                print(f"ESP32: {resp}")
 
 
 # ---------- MAIN ----------

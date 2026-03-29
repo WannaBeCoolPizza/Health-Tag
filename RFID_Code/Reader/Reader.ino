@@ -14,13 +14,16 @@
 #include <SPI.h>
 #include <MFRC522.h>
 #include <driver/i2s.h>
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
 
 // ─── Pins ─────────────────────────────────────────────────────────────────────
 #define RST_PIN     21
 #define SS_PIN       5
-#define BUZZER_PIN  15
 #define BUTTON_PIN  33   // INPUT_PULLUP, active LOW
 #define LAUNCH_PIN  32   // INPUT_PULLUP, active LOW → launches processvoice
+#define CYCLE_PIN   15   // INPUT_PULLUP, active LOW → cycles badge name
 
 // ─── Patient structs ──────────────────────────────────────────────────────────
 struct Allergy {
@@ -47,6 +50,48 @@ struct Patient {
     uint8_t  allergyCount;
     Allergy  allergies[5];
 };
+
+// ─── OLED (SSD1306 0.96") ────────────────────────────────────────────────────
+#define OLED_SDA   4
+#define OLED_SCL   13
+Adafruit_SSD1306 display(128, 64, &Wire, -1);
+
+const char* NAMES[]   = { "Dr. Doe", "Dr. John", "Dr. Poe" };
+const int   NAME_COUNT = 3;
+int         nameIndex  = 0;
+
+void drawBadge(const char* name) {
+    display.clearDisplay();
+    display.setTextColor(SSD1306_WHITE);
+
+    // Outer badge border
+    display.drawRect(0, 0, 128, 64, SSD1306_WHITE);
+
+    // Yellow area — "Name Tag" size 2, centered
+    display.setTextSize(2);
+    display.setCursor(16, 0);
+    display.print("Name Tag");
+
+    // Double divider
+    display.drawLine(0, 17, 127, 17, SSD1306_WHITE);
+    display.drawLine(0, 18, 127, 18, SSD1306_WHITE);
+
+    // Blue area — name centered
+    int16_t  x1, y1;
+    uint16_t w, h;
+    display.setTextSize(2);
+    display.getTextBounds(name, 0, 0, &x1, &y1, &w, &h);
+    display.setCursor((128 - w) / 2, 30);
+    display.print(name);
+
+    display.display();
+}
+
+void initOLED() {
+    Wire.begin(OLED_SDA, OLED_SCL);
+    display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+    drawBadge(NAMES[nameIndex]);
+}
 
 // ─── I2S (MAX98357A) ──────────────────────────────────────────────────────────
 #define I2S_BCLK    26
@@ -244,7 +289,6 @@ void printPatient(const Patient& p) {
         }
     }
     Serial.println("════════════════════════════════════\n");
-    tone(BUZZER_PIN, 1000, 150);
 }
 
 // ─── RFID read ────────────────────────────────────────────────────────────────
@@ -318,9 +362,10 @@ void setup() {
     SPI.begin();
     mfrc522.PCD_Init();
     for (byte i = 0; i < 6; i++) rfidKey.keyByte[i] = 0xFF;
-    pinMode(BUZZER_PIN, OUTPUT);
     pinMode(BUTTON_PIN, INPUT_PULLUP);
     pinMode(LAUNCH_PIN, INPUT_PULLUP);
+    pinMode(CYCLE_PIN,  INPUT_PULLUP);
+    initOLED();
     initI2S();
 
     Serial.println("=== RFID Patient Reader ===");
@@ -356,6 +401,16 @@ void loop() {
         if (digitalRead(LAUNCH_PIN) != LOW) return;
 
         Serial.println("LAUNCH_APP");
-        while (digitalRead(LAUNCH_PIN) == LOW) delay(10);  // wait for release
+        while (digitalRead(LAUNCH_PIN) == LOW) delay(10);
+    }
+
+    // Cycle button → step through badge names
+    if (digitalRead(CYCLE_PIN) == LOW) {
+        delay(20);  // debounce
+        if (digitalRead(CYCLE_PIN) != LOW) return;
+
+        nameIndex = (nameIndex + 1) % NAME_COUNT;
+        drawBadge(NAMES[nameIndex]);
+        while (digitalRead(CYCLE_PIN) == LOW) delay(10);
     }
 }

@@ -28,7 +28,7 @@ const patientSchema = new mongoose.Schema(
     },
     previousDoctorNotes: { type: [String], default: [] }
   },
-  { timestamps: true }
+  { timestamps: true, collection: "patients" }
 );
 
 export const Patient = mongoose.model("Patient", patientSchema);

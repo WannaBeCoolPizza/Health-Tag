@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import express from "express";
 import mongoose from "mongoose";
 import patientRoutes from "./routes/patients.js";
+import { startRfidTxtAutoSync } from "./services/rfidTxtSync.js";
 
 dotenv.config();
 
@@ -21,11 +22,14 @@ app.get("/api/health", (_req, res) => {
 app.use("/api/patients", patientRoutes);
 
 async function startServer() {
+  let autoSync = null;
+
   if (mongoUri) {
     try {
       await mongoose.connect(mongoUri);
       // Keep server available even if Mongo is temporarily down by using fallback data in routes.
       console.log("MongoDB connected");
+      autoSync = startRfidTxtAutoSync();
     } catch (error) {
       console.warn("MongoDB connection failed, using mock fallback:", error.message);
     }
@@ -36,6 +40,15 @@ async function startServer() {
   app.listen(port, () => {
     console.log(`API listening at http://localhost:${port}`);
   });
+
+  const shutdown = () => {
+    if (autoSync) {
+      autoSync.stop();
+    }
+  };
+
+  process.on("SIGINT", shutdown);
+  process.on("SIGTERM", shutdown);
 }
 
 startServer();

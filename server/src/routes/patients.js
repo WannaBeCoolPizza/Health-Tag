@@ -4,11 +4,17 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { Patient } from "../models/Patient.js";
 import { mockPatients } from "../data/mockPatients.js";
+import { syncTxtPatientsToMongo } from "../services/rfidTxtSync.js";
+import { buildPatientDocument } from "../utils/patientTransform.js";
 
 const router = Router();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const txtOutputDir = path.resolve(__dirname, "../../../RFID Code/patients");
+
+function isMongoConnected() {
+  return Patient.db.readyState === 1;
+}
 
 function parseCsvInput(value) {
   return String(value || "")
@@ -21,6 +27,7 @@ function parseCsvInput(value) {
 function buildPatientTxtContent(body) {
   const lines = [
     `id:${String(body.id || "").trim()}`,
+    `rfid:${String(body.rfid || body.id || "").trim().toUpperCase()}`,
     `name:${String(body.name || "").trim()}`,
     `dob:${String(body.dob || "").trim()}`,
     `visit:${String(body.visit || "").trim()}`,
@@ -71,6 +78,11 @@ function normalizePatient(document) {
 }
 
 async function getAllPatients() {
+  if (isMongoConnected()) {
+    const rows = await Patient.find({}).lean();
+    return rows.map(normalizePatient);
+  }
+
   try {
     const rows = await Patient.find({}).lean();
     if (rows.length > 0) {
@@ -85,6 +97,11 @@ async function getAllPatients() {
 async function getPatientByRfid(rfid) {
   const key = (rfid || "").trim().toUpperCase();
   if (!key) return null;
+
+  if (isMongoConnected()) {
+    const found = await Patient.findOne({ rfid: key }).lean();
+    return found ? normalizePatient(found) : null;
+  }
 
   try {
     const found = await Patient.findOne({ rfid: key }).lean();
@@ -121,9 +138,10 @@ router.post("/txt", async (req, res) => {
   const body = req.body || {};
   const patientId = String(body.id || "").trim();
   const patientName = String(body.name || "").trim();
+  const rfid = String(body.rfid || "").trim().toUpperCase();
 
-  if (!patientId || !patientName) {
-    res.status(400).json({ ok: false, message: "Patient id and name are required." });
+  if (!patientId || !patientName || !rfid) {
+    res.status(400).json({ ok: false, message: "Patient id, name, and RFID are required." });
     return;
   }
 
@@ -131,12 +149,18 @@ router.post("/txt", async (req, res) => {
   const fileName = `${safeId}.txt`;
   const outputPath = path.join(txtOutputDir, fileName);
   const content = buildPatientTxtContent(body);
+  const patientDoc = buildPatientDocument({ ...body, rfid });
 
   try {
     await mkdir(txtOutputDir, { recursive: true });
     await writeFile(outputPath, content, "utf8");
+    await Patient.findOneAndUpdate(
+      { $or: [{ rfid }, { id: patientId }] },
+      patientDoc,
+      { upsert: true, new: true, runValidators: true, setDefaultsOnInsert: true }
+    );
   } catch (error) {
-    res.status(500).json({ ok: false, message: "Failed to write txt file." });
+    res.status(500).json({ ok: false, message: "Failed to write txt file and patient record." });
     return;
   }
 
@@ -148,6 +172,11 @@ router.post("/txt", async (req, res) => {
       content
     }
   });
+});
+
+router.post("/sync-txt", async (_req, res) => {
+  const result = await syncTxtPatientsToMongo();
+  res.json({ ok: true, data: result });
 });
 
 export default router;

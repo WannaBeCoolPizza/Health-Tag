@@ -17,6 +17,7 @@ This project now includes a full MERN-style web application based on the origina
   - `GET /api/patients`
   - `GET /api/patients/rfid/:rfid`
 	- `POST /api/patients/txt`
+	- `POST /api/patients/sync-txt`
 - MongoDB integration via Mongoose
 - Mock fallback data if MongoDB is not running
 
@@ -38,6 +39,13 @@ This project now includes a full MERN-style web application based on the origina
 
 - The Patient TXT Writer page saves files in `RFID Code/patients/`.
 - File format matches the ESP32-friendly key-value script style (for example: `id:`, `name:`, `allergy:`, `symptom:` lines).
+
+## RFID TXT Auto Sync
+
+- On backend startup, `.txt` files in `RFID Code/` and `RFID Code/patients/` are automatically parsed and upserted into MongoDB `patients`.
+- Changes to those txt files are watched and synced automatically.
+- You can also trigger manual import with `POST /api/patients/sync-txt`.
+- Or run the one-shot script from terminal: `npm run sync:txt`
 
 ## Notes
 

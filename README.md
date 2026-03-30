@@ -1,4 +1,4 @@
-# Health Tag
+# Heart Tag
 
 RFID-based patient lookup system for healthcare workers. An ESP32 reads a patient's RFID tag, pulls their data, and uses Gemini AI + Google TTS to give a spoken briefing. A MERN web app lets staff look up and manage patient records.
 

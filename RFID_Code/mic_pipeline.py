@@ -29,7 +29,7 @@ import pyttsx3
 from google import genai
 
 # ---------- SETTINGS ----------
-GEMINI_API_KEY  = os.environ.get("GEMINI_API_KEY", "AIzaSyC49mQtHi8bwhV1HhgBun6nncvCvpn7VY8")
+GEMINI_API_KEY  = os.environ.get("GEMINI_API_KEY")
 GEMINI_MODEL    = "gemini-2.0-flash"
 WHISPER_MODEL   = "base"
 BAUD_RATE       = 921600   # must match mic_sender.ino

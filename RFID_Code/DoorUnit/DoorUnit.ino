@@ -43,6 +43,7 @@
 #include "mbedtls/base64.h"
 #include "soc/soc.h"
 #include "soc/rtc_cntl_reg.h"
+#include "secrets.h"   // Copy secrets.h.example → secrets.h and fill in your credentials
 
 // ─── Pins ─────────────────────────────────────────────────────────────────────
 #define RST_PIN    21
@@ -51,12 +52,6 @@
 #define I2S_BCLK   26
 #define I2S_LRC    25
 #define I2S_DOUT   22
-
-// ─── Config ───────────────────────────────────────────────────────────────────
-const char* WIFI_SSID     = "Samsung Galaxy S9_9528";
-const char* WIFI_PASSWORD = "yhnj7559";
-const char* GEMINI_KEY    = "AIzaSyC49mQtHi8bwhV1HhgBun6nncvCvpn7VY8";
-const char* TTS_KEY       = "AIzaSyAgSKYjyqRiSAmErLSxu4I-0l2znny_Rgk";
 
 #define SAMPLE_RATE  8000
 #define I2S_PORT     I2S_NUM_0

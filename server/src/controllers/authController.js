@@ -1,11 +1,14 @@
 /**
  * Authentication Controller
- * 
+ *
  * Handles healthcare worker authentication against MongoDB.
- * In a production environment, passwords should be hashed using bcrypt.
+ * Passwords are hashed with bcrypt (salt rounds = 12).
  */
 
+import bcrypt from "bcryptjs";
 import { HealthcareWorker } from "../models/HealthcareWorker.js";
+
+const SALT_ROUNDS = 12;
 
 /**
  * Verify healthcare worker credentials against MongoDB
@@ -43,8 +46,9 @@ export async function verifyCredentials(username, password) {
       };
     }
 
-    // Compare passwords (in production, use bcrypt.compare())
-    if (worker.password !== password) {
+    // Compare passwords using bcrypt
+    const passwordMatch = await bcrypt.compare(password, worker.password);
+    if (!passwordMatch) {
       return {
         success: false,
         user: null,
@@ -111,9 +115,10 @@ export async function registerHealthcareWorker(data) {
     }
 
     // Create new healthcare worker
+    const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
     const newWorker = new HealthcareWorker({
       username: username.toLowerCase(),
-      password, // In production, hash with bcrypt
+      password: hashedPassword,
       name,
       email: email?.toLowerCase() || "",
       role: role || "healthcare_worker",
@@ -165,9 +170,10 @@ export async function seedDefaultWorker() {
     const count = await HealthcareWorker.countDocuments();
     
     if (count === 0) {
+      const hashedPassword = await bcrypt.hash("worker123", SALT_ROUNDS);
       const defaultWorker = new HealthcareWorker({
         username: "healthcare",
-        password: "worker123",
+        password: hashedPassword,
         name: "Healthcare Worker",
         email: "healthcare@hospital.local",
         role: "healthcare_worker",
